@@ -1,41 +1,45 @@
+from django.db.models import Count, F
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from airport.permissions import IsAdminOrReadOnly
-from django.db.models import F, Count
-from rest_framework import viewsets
+from rest_framework.response import Response
+
 from airport.filters import FlightFilter
 from airport.models import (
-    Airport,
-    AirplaneType,
-    Crew,
     Airplane,
-    Route,
+    AirplaneType,
+    Airport,
+    Crew,
     Flight,
-    Order
+    Order,
+    Route,
 )
+from airport.permissions import IsAdminOrReadOnly
 from airport.serializers import (
-    AirportSerializer,
-    AirplaneTypeSerializer,
-    CrewSerializer,
-    AirplaneSerializer,
+    AirplaneImageSerializer,
     AirplaneListSerializer,
-    RouteSerializer,
-    RouteListSerializer,
-    FlightSerializer,
-    FlightListSerializer,
+    AirplaneSerializer,
+    AirplaneTypeSerializer,
+    AirportSerializer,
+    CrewSerializer,
     FlightDetailSerializer,
-    OrderSerializer
+    FlightListSerializer,
+    FlightSerializer,
+    OrderSerializer,
+    RouteListSerializer,
+    RouteSerializer,
 )
-
-
-class AirportViewSet(viewsets.ModelViewSet):
-    queryset = Airport.objects.all()
-    serializer_class = AirportSerializer
-    permission_classes = (IsAdminOrReadOnly,)
 
 
 class AirplaneTypeViewSet(viewsets.ModelViewSet):
     queryset = AirplaneType.objects.all()
     serializer_class = AirplaneTypeSerializer
+    permission_classes = (IsAdminOrReadOnly,)
+
+
+class AirportViewSet(viewsets.ModelViewSet):
+    queryset = Airport.objects.all()
+    serializer_class = AirportSerializer
     permission_classes = (IsAdminOrReadOnly,)
 
 
@@ -46,7 +50,6 @@ class CrewViewSet(viewsets.ModelViewSet):
 
 
 class AirplaneViewSet(viewsets.ModelViewSet):
-
     queryset = Airplane.objects.select_related("airplane_type")
     serializer_class = AirplaneSerializer
     permission_classes = (IsAdminOrReadOnly,)
@@ -54,7 +57,24 @@ class AirplaneViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return AirplaneListSerializer
-        return self.serializer_class
+        if self.action == "upload_image":
+            return AirplaneImageSerializer
+        return AirplaneSerializer
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="upload-image",
+    )
+    def upload_image(self, request, pk=None):
+        airplane = self.get_object()
+        serializer = self.get_serializer(airplane, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RouteViewSet(viewsets.ModelViewSet):
@@ -70,12 +90,14 @@ class RouteViewSet(viewsets.ModelViewSet):
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = (
-        Flight.objects
-        .select_related("route__source", "route__destination", "airplane")
+        Flight.objects.select_related(
+            "route__source", "route__destination", "airplane"
+        )
         .prefetch_related("crew")
         .annotate(
             tickets_available=(
-                F("airplane__rows") * F("airplane__seats_in_row") - Count("tickets")
+                F("airplane__rows") * F("airplane__seats_in_row")
+                - Count("tickets")
             )
         )
     )
@@ -97,13 +119,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        return (
-            Order.objects
-            .filter(user=self.request.user)
-            .prefetch_related(
-                "tickets__flight__route",
-                "tickets__flight__airplane"
-            )
+        return Order.objects.filter(user=self.request.user).prefetch_related(
+            "tickets__flight__route", "tickets__flight__airplane"
         )
 
     def perform_create(self, serializer):

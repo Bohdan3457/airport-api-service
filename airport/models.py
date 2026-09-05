@@ -100,19 +100,33 @@ class Order(models.Model):
 class Ticket(models.Model):
     row = models.IntegerField()
     seat = models.IntegerField()
-    flight = models.ForeignKey(
-        Flight,
-        on_delete=models.CASCADE,
-        related_name="tickets"
-    )
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name="tickets"
-    )
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="tickets")
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="tickets")
 
     class Meta:
         unique_together = ("flight", "row", "seat")
+        ordering = ("row", "seat")
 
-    def __str__(self) -> str:
-        return f"{self.row} {self.seat}"
+    @staticmethod
+    def validate_ticket(row, seat, airplane, error_to_raise):
+        if not (1 <= row <= airplane.rows):
+            raise error_to_raise({
+                "row": f"Row number must be in range [1, {airplane.rows}], not {row}."
+            })
+        if not (1 <= seat <= airplane.seats_in_row):
+            raise error_to_raise({
+                "seat": f"Seat number must be in range"
+                f" [1, {airplane.seats_in_row}], not {seat}."
+            })
+
+    def clean(self):
+        Ticket.validate_ticket(
+            self.row,
+            self.seat,
+            self.flight.airplane,
+            ValueError
+        )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
