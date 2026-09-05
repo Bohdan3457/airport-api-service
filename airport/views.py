@@ -1,6 +1,8 @@
+from rest_framework.permissions import IsAuthenticated
+from airport.permissions import IsAdminOrReadOnly
 from django.db.models import F, Count
 from rest_framework import viewsets
-
+from airport.filters import FlightFilter
 from airport.models import (
     Airport,
     AirplaneType,
@@ -28,22 +30,26 @@ from airport.serializers import (
 class AirportViewSet(viewsets.ModelViewSet):
     queryset = Airport.objects.all()
     serializer_class = AirportSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class AirplaneTypeViewSet(viewsets.ModelViewSet):
     queryset = AirplaneType.objects.all()
     serializer_class = AirplaneTypeSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class CrewViewSet(viewsets.ModelViewSet):
     queryset = Crew.objects.all()
     serializer_class = CrewSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class AirplaneViewSet(viewsets.ModelViewSet):
 
     queryset = Airplane.objects.select_related("airplane_type")
     serializer_class = AirplaneSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -54,6 +60,7 @@ class AirplaneViewSet(viewsets.ModelViewSet):
 class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.select_related("source", "destination")
     serializer_class = RouteSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -72,7 +79,9 @@ class FlightViewSet(viewsets.ModelViewSet):
             )
         )
     )
+    permission_classes = (IsAdminOrReadOnly,)
     serializer_class = FlightSerializer
+    filterset_class = FlightFilter
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -84,6 +93,7 @@ class FlightViewSet(viewsets.ModelViewSet):
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         return (

@@ -30,6 +30,13 @@ class AirplaneSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "rows", "seats_in_row", "airplane_type")
 
 
+class AirplaneListSerializer(AirplaneSerializer):
+    airplane_type = AirplaneTypeSerializer(read_only=True)
+
+    class Meta(AirplaneSerializer.Meta):
+        fields = AirplaneSerializer.Meta.fields
+
+
 class CrewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Crew
@@ -40,6 +47,14 @@ class RouteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Route
         fields = ("id", "source", "destination", "distance")
+
+
+class RouteListSerializer(RouteSerializer):
+    source = AirportSerializer(read_only=True)
+    destination = AirportSerializer(read_only=True)
+
+    class Meta(RouteSerializer.Meta):
+        fields = RouteSerializer.Meta.fields
 
 
 class FlightSerializer(serializers.ModelSerializer):
@@ -53,6 +68,34 @@ class FlightSerializer(serializers.ModelSerializer):
             "arrival_time",
             "crew"
         )
+
+
+class FlightListSerializer(FlightSerializer):
+    route = serializers.StringRelatedField(read_only=True)
+    airplane_name = serializers.CharField(source="airplane.name", read_only=True)
+    airplane_capacity = serializers.IntegerField(
+        source="airplane.capacity", read_only=True
+    )
+    tickets_available = serializers.IntegerField(read_only=True)
+
+    class Meta(FlightSerializer.Meta):
+        fields = (
+            "id",
+            "route",
+            "airplane_name",
+            "airplane_capacity",
+            "departure_time",
+            "arrival_time",
+            "tickets_available",
+        )
+
+class FlightDetailSerializer(FlightSerializer):
+    route = RouteListSerializer(read_only=True)
+    airplane = AirplaneListSerializer(read_only=True)
+    crew = CrewSerializer(many=True, read_only=True)
+
+    class Meta(FlightSerializer.Meta):
+        fields = FlightSerializer.Meta.fields
 
 
 class TicketSerializer(serializers.ModelSerializer):
