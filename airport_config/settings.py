@@ -39,8 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "django_filters",
     "rest_framework",
+    "rest_framework_simplejwt",
     "airport_config",
     "airport",
+    "user",
 ]
 
 MIDDLEWARE = [
@@ -137,5 +139,9 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend"
-    )
+    ),
+
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
 }
